@@ -1,5 +1,5 @@
 #include "kernel.h"
-
+#include "common.h"
 typedef unsigned char uint8_t;
 typedef unsigned int uint32_t;
 typedef uint32_t size_t;
@@ -25,6 +25,7 @@ struct sbiret sbi_call(long arg0, long arg1, long arg2, long arg3, long arg4,
     return (struct sbiret){.error = a0, .value = a1};
 }
 
+
 void putchar(char ch) {
     sbi_call(ch, 0, 0, 0, 0, 0, 0, 1 /* Console Putchar */);
 }
@@ -47,8 +48,13 @@ void kernel_main(void) {
     // Clear BSS section
     memset(__bss, 0, (size_t) __bss_end - (size_t) __bss);
 
-    // Print a message to test output
+    // Print a message to test output using putchar
     puts("\n\nHello World from RISC-V!\n");
+   
+    // Hello world using printf 
+    printf("\n\nHello %s\n", "World! using Printf!");
+    printf("1 + 3 = %d, %x\n", 1 + 3, 0x123abcde);
+
 
     for (;;);
 }
