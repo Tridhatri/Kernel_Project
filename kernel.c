@@ -49,6 +49,12 @@ void kernel_main(void) {
     printf("1 + 3 = %d, %x\n", 1 + 3, 0x123abcde);
 
 
+
+    // We'll simulate kernel panic
+    PANIC("WE are booted!");
+    printf("Obvously cannot reach here!");
+
+
     for (;;);
 }
 
