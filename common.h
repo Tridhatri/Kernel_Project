@@ -12,6 +12,10 @@ typedef unsigned int uint32_t;
 typedef unsigned long long uint64_t;
 typedef uint32_t size_t;
 typedef uint32_t vaddr_t;
+typedef uint32_t paddr_t;
+// paddr_t is a type representing physical memory addresses.
+// vaddr_t is for Virtual memory == uintprt_t in STL
+
 
 #define true 1
 #define false 0
@@ -19,6 +23,11 @@ typedef uint32_t vaddr_t;
 #define align_up(value, align) __builtin_align_up(value, align)
 #define offset_of(type, member) __builtin_offsetof(type, member)
 #define is_aligned(value, align) __builtin_is_aligned(value, align)
+
+// align_up rounds up to nearsert multiple of align. (2)
+// is_aligned checks if value is a multiple of align.
+// offsetof returns the offset of a member within a structure.
+
 
 
 void *memset(void *buf, char c,size_t n);
