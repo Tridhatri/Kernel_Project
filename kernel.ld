@@ -25,4 +25,9 @@ SECTIONS {
     . = ALIGN(4);
     . += 128 * 1024; /* 128KB */
     __stack_top = .;
+
+    . = ALIGN(4096);
+    __free_ram = .; /* Defining the mem regions that are going to be managed by the memory allocator */ 
+    . += 64 * 1024 * 1024; /* 64 MB */
+    __free_ram_end = .;
 }
