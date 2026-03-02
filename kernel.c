@@ -157,6 +157,31 @@ void handle_trap(struct trap_frame *f) {
     PANIC("I am trapped!, scause = %x, stval = %x, sepc = %x\n", scause, stval,user_pc);
 }
 
+
+// Defining a Memory Allocator
+extern char __free_ram[], __free_ram_end[];
+
+// Basically a bump allocator/ Linear allocator algorithm.
+
+paddr_t alloc_pages(uint32_t n) {
+    static paddr_t next_paddr = (paddr_t) __free_ram;
+    // static variable becuase we want to preserve this across calls.
+    paddr_t paddr = next_paddr;
+    next_paddr += n * PAGE_SIZE;
+    // So basically just advancing the next_paddr to the end of the PAGE size * n amount of memory.
+    
+    if(next_paddr > (paddr_t) __free_ram_end){
+        PANIC("Bruh. Out of memory! ");
+    }
+
+    memset((void *) paddr, 0, n * PAGE_SIZE);
+    // memset enusres that the allocated memory area is always filled with zeroes.
+    // This is to ensure to avoid hard-to-debug issues.
+    return paddr;
+    // Return the tip of the memory until now.
+}
+
+
 void kernel_main(void) {
     // Clear BSS section
     memset(__bss, 0, (size_t) __bss_end - (size_t) __bss);
@@ -168,22 +193,27 @@ void kernel_main(void) {
     printf("\n\nHello %s\n", "World! using Printf!");
     printf("1 + 3 = %d, %x\n", 1 + 3, 0x123abcde);
 
-
-
     // We'll simulate kernel panic
     //PANIC("WE are booted!");
     //printf("Obvously cannot reach here!");
 
-    WRITE_CSR(stvec, (uint32_t) kernel_entry);
+    //WRITE_CSR(stvec, (uint32_t) kernel_entry);
     // Basically saving the kernel entry to save the register in stvec.
     // So that when the exception is handled by the kernel entry, it returns 
     // back to stvec for the CPU to process back again.
 
-    __asm__ __volatile__("unimp");
+    //__asm__ __volatile__("unimp");
     // Unimp instruction basicallt is a pseudo instruction which triggers
     // an illegal instruction exception.
 
 
+    /* Allocating memory */
+    paddr_t paddr0 = alloc_pages(2);
+    paddr_t paddr1 = alloc_pages(1);
+    printf("Alloc_pages test :paddr0 is %x\n", paddr0);
+    printf("Alloc_pages test :paddr1 is %x\n", paddr1);
+
+    PANIC("WE are booted!");
 
     for (;;);
 }
