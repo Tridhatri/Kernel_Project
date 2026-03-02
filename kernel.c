@@ -36,6 +36,126 @@ void puts(const char *s) {
     }
 }
 
+// When a exception occurs, there are certain registers which the kernel uses to handle the exception.
+// CPU checks the medeleg register to determine which operation mode should handle the exception.
+// OpenSBI default configuration is S-Mode handling for both U-mode and S-mode exceptions.
+// CPU saves its state (registers) into various CSRs.
+// The value of stvec register is set to the PC, jumping to kernel's exception handler.
+// The exception handler saves general puprise registers (the program state)
+// And handles the exception.
+// Once exception handling is done, the exception handler restores the saved execution state and 
+// calls the sret instruction to resume execution from the point where the exception occured.
+
+// Certain csr registers that the CPU floods when an exception occurs for the kernel to later handle.
+//scause -> Type of exception.
+// stval -> Additonal info about exception
+// sepc -> Program counter at the point where the exception occured.
+// sstatus -> Operation mode (U-mode /S-mode) where the exception has occured.
+
+// Defining Kernel Entry point for when an exception occurs.
+
+__attribute__((naked))
+__attribute__((aligned(4)))
+void kernel_entry(void) {
+    __asm__ __volatile__(
+        "csrw sscratch, sp\n"
+        "addi sp, sp, -4 * 31\n"
+        "sw ra,  4 * 0(sp)\n"
+        "sw gp,  4 * 1(sp)\n"
+        "sw tp,  4 * 2(sp)\n"
+        "sw t0,  4 * 3(sp)\n"
+        "sw t1,  4 * 4(sp)\n"
+        "sw t2,  4 * 5(sp)\n"
+        "sw t3,  4 * 6(sp)\n"
+        "sw t4,  4 * 7(sp)\n"
+        "sw t5,  4 * 8(sp)\n"
+        "sw t6,  4 * 9(sp)\n"
+        "sw a0,  4 * 10(sp)\n"
+        "sw a1,  4 * 11(sp)\n"
+        "sw a2,  4 * 12(sp)\n"
+        "sw a3,  4 * 13(sp)\n"
+        "sw a4,  4 * 14(sp)\n"
+        "sw a5,  4 * 15(sp)\n"
+        "sw a6,  4 * 16(sp)\n"
+        "sw a7,  4 * 17(sp)\n"
+        "sw s0,  4 * 18(sp)\n"
+        "sw s1,  4 * 19(sp)\n"
+        "sw s2,  4 * 20(sp)\n"
+        "sw s3,  4 * 21(sp)\n"
+        "sw s4,  4 * 22(sp)\n"
+        "sw s5,  4 * 23(sp)\n"
+        "sw s6,  4 * 24(sp)\n"
+        "sw s7,  4 * 25(sp)\n"
+        "sw s8,  4 * 26(sp)\n"
+        "sw s9,  4 * 27(sp)\n"
+        "sw s10, 4 * 28(sp)\n"
+        "sw s11, 4 * 29(sp)\n"
+
+        "csrr a0, sscratch\n"
+        "sw a0, 4 * 30(sp)\n"
+
+        "mv a0, sp\n"
+        "call handle_trap\n"
+
+        "lw ra,  4 * 0(sp)\n"
+        "lw gp,  4 * 1(sp)\n"
+        "lw tp,  4 * 2(sp)\n"
+        "lw t0,  4 * 3(sp)\n"
+        "lw t1,  4 * 4(sp)\n"
+        "lw t2,  4 * 5(sp)\n"
+        "lw t3,  4 * 6(sp)\n"
+        "lw t4,  4 * 7(sp)\n"
+        "lw t5,  4 * 8(sp)\n"
+        "lw t6,  4 * 9(sp)\n"
+        "lw a0,  4 * 10(sp)\n"
+        "lw a1,  4 * 11(sp)\n"
+        "lw a2,  4 * 12(sp)\n"
+        "lw a3,  4 * 13(sp)\n"
+        "lw a4,  4 * 14(sp)\n"
+        "lw a5,  4 * 15(sp)\n"
+        "lw a6,  4 * 16(sp)\n"
+        "lw a7,  4 * 17(sp)\n"
+        "lw s0,  4 * 18(sp)\n"
+        "lw s1,  4 * 19(sp)\n"
+        "lw s2,  4 * 20(sp)\n"
+        "lw s3,  4 * 21(sp)\n"
+        "lw s4,  4 * 22(sp)\n"
+        "lw s5,  4 * 23(sp)\n"
+        "lw s6,  4 * 24(sp)\n"
+        "lw s7,  4 * 25(sp)\n"
+        "lw s8,  4 * 26(sp)\n"
+        "lw s9,  4 * 27(sp)\n"
+        "lw s10, 4 * 28(sp)\n"
+        "lw s11, 4 * 29(sp)\n"
+        "lw sp,  4 * 30(sp)\n"
+        "sret\n"
+    );
+}
+
+
+// So, at the time of exception occurance, 
+// sscratch register is used as a temporary storagr to save the stack pointer
+// at the time of exception occurence.
+//1. So, saving the kernel state before exception handling.
+
+// Stack pinter is set in a0 register, 
+// and the handle_trap function is called.
+//  2. Call the trap handler.
+// 3. trap_frame structure is basically now containing all the kernel entry stack registers states.
+// Adding __attribute((aligned(4))) aligns the function's starting address to a 4-byte boundary.
+
+
+// Define the handle_trap func to handle the exception 
+
+void handle_trap(struct trap_frame *f) {
+    uint32_t scause = READ_CSR(scause);
+    uint32_t stval = READ_CSR(stval);
+    uint32_t user_pc = READ_CSR(sepc);
+    //This function is basically called from the kernel_entry point
+    // This is the actual handler
+    // Where you print out the scause, stval, sepc
+    PANIC("I am trapped!, scause = %x, stval = %x, sepc = %x\n", scause, stval,user_pc);
+}
 
 void kernel_main(void) {
     // Clear BSS section
@@ -51,8 +171,18 @@ void kernel_main(void) {
 
 
     // We'll simulate kernel panic
-    PANIC("WE are booted!");
-    printf("Obvously cannot reach here!");
+    //PANIC("WE are booted!");
+    //printf("Obvously cannot reach here!");
+
+    WRITE_CSR(stvec, (uint32_t) kernel_entry);
+    // Basically saving the kernel entry to save the register in stvec.
+    // So that when the exception is handled by the kernel entry, it returns 
+    // back to stvec for the CPU to process back again.
+
+    __asm__ __volatile__("unimp");
+    // Unimp instruction basicallt is a pseudo instruction which triggers
+    // an illegal instruction exception.
+
 
 
     for (;;);
@@ -68,4 +198,3 @@ void boot(void) {
         : [stack_top] "r" (__stack_top) // Pass the stack top address
     );
 }
-
