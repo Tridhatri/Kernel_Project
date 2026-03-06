@@ -182,6 +182,104 @@ paddr_t alloc_pages(uint32_t n) {
 }
 
 
+// Context switch
+__attribute((naked)) void switch_context(uint32_t *prev_sp, uint32_t *next_sp) {
+    __asm__ __volatile__ (
+        // Save callee-saved registers onto the current procss's stack.
+        "addi sp, sp, -13*4\n"
+        "sw ra, 0*4(sp)\n"
+        "sw s0, 1*4(sp)\n"
+        "sw s1, 2*4(sp)\n"
+        "sw s2,  3  * 4(sp)\n"
+        "sw s3,  4  * 4(sp)\n"
+        "sw s4,  5  * 4(sp)\n"
+        "sw s5,  6  * 4(sp)\n"
+        "sw s6,  7  * 4(sp)\n"
+        "sw s7,  8  * 4(sp)\n"
+        "sw s8,  9  * 4(sp)\n"
+        "sw s9,  10 * 4(sp)\n"
+        "sw s10, 11 * 4(sp)\n"
+        "sw s11, 12 * 4(sp)\n"
+
+        // Switch the stack pointer
+        "sw sp, (a0)\n" //*prev_sp = sp;
+        "lw sp, (a1)\n" // Switch the stack pointer sp here.
+
+        // Restore callee-saved registers from the next process's stack.
+        "lw ra, 0*4(sp)\n" // Restore callee-saved registers only
+        "lw s0,  1  * 4(sp)\n"
+        "lw s1,  2  * 4(sp)\n"
+        "lw s2,  3  * 4(sp)\n"
+        "lw s3,  4  * 4(sp)\n"
+        "lw s4,  5  * 4(sp)\n"
+        "lw s5,  6  * 4(sp)\n"
+        "lw s6,  7  * 4(sp)\n"
+        "lw s7,  8  * 4(sp)\n"
+        "lw s8,  9  * 4(sp)\n"
+        "lw s9,  10 * 4(sp)\n"
+        "lw s10, 11 * 4(sp)\n"
+        "lw s11, 12 * 4(sp)\n"
+        "addi sp, sp, 13 * 4\n"  // We've popped 13 4-byte registers from the stack
+        "ret\n"
+    );
+}
+/*
+Callee-saved registers are registers that a called function must restore before returning. 
+In RISC-V, s0 to s11 are callee-saved registers. 
+Other registers like a0 are caller-saved registers, 
+and already saved on the stack by the caller.
+This is why switch_context handles only part of registers.
+*/
+
+
+// Creating a process
+struct process procs[PROCS_MAX]; // All process control structures.
+
+struct process* create_process(uint32_t pc) {
+    // Finding an unused process control structure
+    struct process* proc = NULL;
+    int i;
+
+    for(int i = 0; i < PROCS_MAX; i++) {
+        if(procs[i].state == PROC_UNUSED){
+            // Then it is free
+            proc = &proc[i];
+            // Assign the proc pointer to the struct proc in the array.
+            break;
+        }
+    }
+        if(!proc) {
+            PANIC("No free process slots!!");
+        }
+
+        // Stack the callee-saved registers.
+        // These register values will be resotred in the first contxt switch in switch_context.
+
+        uint32_t *sp = (uint32_t*) &proc->stack[sizeof(proc->stack)];
+        *--sp = 0; //s11
+        *--sp = 0; //s10
+        *--sp = 0; //s9
+        *--sp = 0; //s8
+        *--sp = 0; //s7
+        *--sp = 0; //s6
+        *--sp = 0; //s5
+        *--sp = 0;                      // s4
+        *--sp = 0;                      // s3
+        *--sp = 0;                      // s2
+        *--sp = 0;                      // s1
+        *--sp = 0;                      // s0
+        *--sp = (uint32_t) pc;          // ra
+        // Initialize fields.
+        proc->pid = i + 1;
+        proc->state = PROC_RUNNABLE;
+        proc->sp = (uint32_t) sp;
+        return proc;
+}
+
+
+
+
+
 void kernel_main(void) {
     // Clear BSS section
     memset(__bss, 0, (size_t) __bss_end - (size_t) __bss);

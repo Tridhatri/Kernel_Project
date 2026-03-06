@@ -70,3 +70,18 @@ struct trap_frame {
         uint32_t __tmp = (value);                                              \
         __asm__ __volatile__("csrw " #reg ", %0" ::"r"(__tmp));                \
     } while (0)
+
+#define PROCS_MAX 8
+
+#define PROC_UNUSED 0
+#define PROC_RUNNABLE 1
+
+struct process {
+    int pid; // Process ID
+    int state; // Either PROC_UNUSED or PROC_RUNNABLE
+    vaddr_t sp; // Stack pointer for this process
+    uint8_t stack[8192]; // Kernel stack
+};
+
+// so, this basiaclly does having kernel stack for each process/thread
+// Instead of a single stack per CPU (processor).
