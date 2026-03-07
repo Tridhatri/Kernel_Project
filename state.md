@@ -82,3 +82,20 @@ High Address
 │ sp+0    │ ra           │
 ├────────────────────────┤
 Low Address
+
+
+
+### Execution order
+
+
+1. boot() ← First code the CPU executes
+   ├─ Initializes stack
+   └─ Jumps to kernel_main()
+2. kernel_main() ← Main kernel loop
+   ├─ Prints hello
+   ├─ Sets up exception handler
+   └─ Allocates memory
+3. kernel_entry() ← Called automatically on exception
+   ├─ Saves all registers
+   ├─ Calls handle_trap()
+   └─ Restores and returns
