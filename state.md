@@ -13,7 +13,6 @@ When you do :
 
 This just proves sepc really points to where the exception occcured.
 
-
 ## Memory Allocation
 
 We got this :
@@ -26,8 +25,60 @@ And verification :
 ❯ llvm-nm kernel.elf | grep __free_ram
 80221000 B __free_ram
 84221000 B __free_ram_end
- 
 
 So basically, paddr0 matches the start address of __free_ram
 
 Sweet.
+
+# For my undestanding
+
+## High level overview
+
+Time T0: CPU Reset
+   └─ No stack
+
+Time T1: boot()
+   └─ sp = 0x80020000
+
+Time T2: boot() → kernel_main()
+   └─ sp still 0x80020000
+   └─ ra points to boot's next instruction (never used, jump not call)
+
+Time T3: kernel_main() → alloc_pages(2)
+   └─ sp = 0x80020000
+   └─ Stack frame created for alloc_pages
+
+Time T4: alloc_pages() returns paddr0
+   └─ sp = 0x80020000
+   └─ Back in kernel_main()
+
+Time T5: kernel_main() → alloc_pages(1)
+   └─ sp = 0x80020000
+   └─ Stack frame created for alloc_pages (reused)
+
+Time T6: alloc_pages() returns paddr1
+   └─ sp = 0x80020000
+   └─ Back in kernel_main()
+
+Time T7: PANIC() called
+   └─ Kernel terminates
+
+
+### Stack layout in kernel_entry
+
+High Address
+┌────────────────────────┐
+│ sp+120  │ Original SP  │ ← Saved from sscratch
+├────────────────────────┤
+│ sp+116  │ s11          │
+│ sp+112  │ s10          │
+│         │ ...          │
+│ sp+68   │ a7           │
+│ sp+64   │ a6           │
+│         │ ...          │
+│ sp+40   │ t6           │
+│ sp+36   │ t5           │
+│         │ ...          │
+│ sp+0    │ ra           │
+├────────────────────────┤
+Low Address
