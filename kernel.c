@@ -147,7 +147,7 @@ void kernel_entry(void) {
 
 // Define the handle_trap func to handle the exception 
 
-void handle_trap(struct trap_frame *f) {
+void handle_trap(struct trap_frame *f __attribute__((unused))) {
     uint32_t scause = READ_CSR(scause);
     uint32_t stval = READ_CSR(stval);
     uint32_t user_pc = READ_CSR(sepc);
@@ -237,13 +237,18 @@ struct process procs[PROCS_MAX]; // All process control structures.
 
 struct process* create_process(uint32_t pc) {
     // Finding an unused process control structure
+    // So you are passing the Program context pc.
+    // And basically creating the process
+    // First, by checking if there are process slots (Bookkeeping)
+    // Second, Put
+
     struct process* proc = NULL;
     int i;
 
-    for(int i = 0; i < PROCS_MAX; i++) {
+    for(i = 0; i < PROCS_MAX; i++) {
         if(procs[i].state == PROC_UNUSED){
             // Then it is free
-            proc = &proc[i];
+            proc = &procs[i];
             // Assign the proc pointer to the struct proc in the array.
             break;
         }
@@ -263,12 +268,12 @@ struct process* create_process(uint32_t pc) {
         *--sp = 0; //s7
         *--sp = 0; //s6
         *--sp = 0; //s5
-        *--sp = 0;                      // s4
-        *--sp = 0;                      // s3
-        *--sp = 0;                      // s2
-        *--sp = 0;                      // s1
-        *--sp = 0;                      // s0
-        *--sp = (uint32_t) pc;          // ra
+        *--sp = 0; // s4
+        *--sp = 0; // s3
+        *--sp = 0; // s2
+        *--sp = 0; // s1
+        *--sp = 0; // s0
+        *--sp = (uint32_t) pc;// ra
         // Initialize fields.
         proc->pid = i + 1;
         proc->state = PROC_RUNNABLE;
@@ -276,6 +281,33 @@ struct process* create_process(uint32_t pc) {
         return proc;
 }
 
+// Creating Process
+void delay(void) {
+    for(int i =0; i<30000000;i++)
+        __asm__ __volatile("nop"); // Do nothing really.
+        // Basically added to tell the compiler to not to optimise and remove the loop.
+}
+
+struct process *proc_a;
+struct process *proc_b;
+
+void proc_a_entry(void) {
+    printf("Starting process A\n");
+    while(1) {
+        putchar('A');
+        switch_context(&proc_a->sp, &proc_b->sp);
+        delay();
+    }
+}
+
+void proc_b_entry(void) {
+    printf("Starting process B\n");
+    while(1) {
+        putchar('B');
+        switch_context(&proc_b->sp, &proc_a->sp);
+        delay();
+    }
+}
 
 
 
@@ -311,7 +343,14 @@ void kernel_main(void) {
     printf("Alloc_pages test :paddr0 is %x\n", paddr0);
     printf("Alloc_pages test :paddr1 is %x\n", paddr1);
 
-    PANIC("WE are booted!");
+
+    WRITE_CSR(stvec, (uint32_t)kernel_entry);
+    proc_a = create_process((uint32_t) proc_a_entry);
+    proc_b = create_process((uint32_t) proc_b_entry);
+    proc_a_entry();
+    PANIC("Unreachable here!");
+
+    //PANIC("WE are booted!");
 
     for (;;);
 }

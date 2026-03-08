@@ -6,3 +6,4 @@ Developed a bootable kernel with memory management, process scheduling, and syst
 
 1. RISC-V SBI specification : [SBI Spec](https://lists.riscv.org/g/tech-brs/attachment/361/0/riscv-sbi.pdf)
 2. [OpenSBI](https://github.com/riscv-software-src/opensbi)
+3. [Perfectly written intro to Linker scripts](https://mcyoung.xyz/2021/06/01/linker-script/)
